@@ -41,7 +41,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
-        ExecuteMsg::ResetToZero {} => try_reset_to_zero(deps),
+        ExecuteMsg::ResetToZero {} => try_reset_to_zero(deps, info),
     }
 }
 
@@ -64,12 +64,14 @@ pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Respons
     Ok(Response::new().add_attribute("method", "reset"))
 }
 
-pub fn try_reset_to_zero(deps: DepsMut) -> Result<Response, ContractError> {
+pub fn try_reset_to_zero(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+        if info.sender != state.owner {
+            return Err(ContractError::Unauthorized {});
+        }
         state.count = 0;
         Ok(state)
     })?;
-
     Ok(Response::new().add_attribute("method", "reset_to_zero"))
 }
 
@@ -155,6 +157,7 @@ mod tests {
         assert_eq!(5, value.count);
     }
 
+    #[test]
     fn reset_to_zero() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
